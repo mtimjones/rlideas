@@ -1,39 +1,22 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+#include <curses.h>
 
-#define getSRand()      ( (float) rand() / (float) RAND_MAX )
-#define getRand( x )    (int)((x) * getSRand() )
+static WINDOW *mainwin;
 
-#define X_MAX    250
-#define Y_MAX    50
+#define NLINES      23
+#define NCOLS       69
 
-char map[ Y_MAX ][ X_MAX ];
+#define getSRand()      ( ( float ) rand( ) / ( float ) RAND_MAX )
+#define getRand( x )    ( int ) ( ( x ) * getSRand( ) )
 
-void MapInit( void )
-{
-   int X, Y;
+#define X_MAP_MAX    1000
+#define Y_MAP_MAX    500
 
-   for ( Y = 0 ; Y < Y_MAX ; Y++ )
-   {
-      for ( X = 0 ; X < X_MAX ; X++ )
-      {
-         if ( Y == 0 || X == 0 )
-         {
-            map[ Y ][ X ] = '+';
-         }
-         else if ( ( Y == ( Y_MAX - 1 ) ) || ( X == ( X_MAX - 1 ) ) )
-         {
-            map[ Y ][ X ] = '+';
-         }
-         else
-         {
-            map[ Y ][ X ] = ' ';
-         }
-      }
-   }
+char map[ Y_MAP_MAX ][ X_MAP_MAX ];
 
-   return;
-}
+int offsetx, offsety;
 
 int ObstacleCreate( void )
 {
@@ -41,8 +24,8 @@ int ObstacleCreate( void )
    int SizeX, SizeY;
    const int LimitX = 6, LimitY = 3;
 
-   LocX = getRand( ( X_MAX - 2 - LimitX ) ) + 1;
-   LocY = getRand( ( Y_MAX - 2 - LimitY ) ) + 1;
+   LocX = getRand( ( X_MAP_MAX - 2 - LimitX ) ) + 1;
+   LocY = getRand( ( Y_MAP_MAX - 2 - LimitY ) ) + 1;
 
    SizeX = getRand( LimitX ) + 2;
    SizeY = getRand( LimitY ) + 2;
@@ -58,17 +41,148 @@ int ObstacleCreate( void )
    return ( SizeY * SizeX );
 }
 
-void MapPrint( void )
+void MapInit( int PY, int PX )
 {
    int X, Y;
+   int Density = 0;
 
-   for ( Y = 0 ; Y < Y_MAX ; Y++ )
+   for ( Y = 0 ; Y < Y_MAP_MAX ; Y++ )
    {
-      for ( X = 0 ; X < X_MAX ; X++ )
+      for ( X = 0 ; X < X_MAP_MAX ; X++ )
       {
-         printf( "%c", map[ Y ][ X ] );
+         if ( Y == 0 || X == 0 )
+         {
+            map[ Y ][ X ] = '+';
+         }
+         else if ( ( Y == ( Y_MAP_MAX - 1 ) ) || ( X == ( X_MAP_MAX - 1 ) ) )
+         {
+            map[ Y ][ X ] = '+';
+         }
+         else
+         {
+            map[ Y ][ X ] = ' ';
+         }
       }
-      printf("\n");
+   }
+
+   // Add noise to the map.
+   while ( Density < ( ( Y_MAP_MAX * X_MAP_MAX ) / 3 ) )
+   {
+      Density += ObstacleCreate( );
+   }
+
+   map[ PY ][ PX ] = '@';
+
+   return;
+}
+
+
+void win_startup( void )
+{
+   initscr( );
+   cbreak( );
+   noecho( );
+   curs_set( 0 );
+   nonl( );
+
+   offsety = ( LINES - NLINES ) / 2;
+   offsetx = ( COLS - NCOLS ) / 2;
+
+   mainwin = newwin( NLINES, NCOLS, offsety, offsetx );
+   nodelay( mainwin, TRUE );
+   keypad( mainwin, TRUE );
+
+   return;
+}
+
+void win_update( void )
+{
+   wborder( mainwin, 0, 0, 0, 0, 0, 0, 0, 0 );
+
+   wrefresh( mainwin );
+
+   return;
+}
+
+void win_shutdown( void )
+{
+   delwin( mainwin );
+
+   endwin( );
+
+   return;
+}
+
+char vp_map( int y, int x )
+{
+   if ( ( y < 0 ) || ( x < 0 ) )
+   {
+      return '~';
+   }
+   else if ( ( y >= Y_MAP_MAX ) || ( x >= X_MAP_MAX ) )
+   {
+      return '~';
+   }
+   else
+   {
+      return map[ y ][ x ];
+   }
+}
+
+void win_map_viewport( int Y, int X )
+{
+   int x, y;
+   int vp_y;
+   int vp_x;
+
+   vp_y = Y - ( ( NLINES - 2 ) / 2 );
+
+   for ( y = 1 ; y < ( NLINES - 1 ) ; y++ )
+   {
+      vp_x = X - ( ( NCOLS - 2 ) / 2 );
+      for ( x = 1 ; x < ( NCOLS - 1 ) ; x++ )
+      {
+         mvwprintw( mainwin, y, x, "%c", vp_map( vp_y, vp_x ) );
+         vp_x++;
+      }
+      vp_y++;
+   }
+
+   return;
+}
+
+void get_input( int *Y, int *X )
+{
+   int c;
+   int dy=0, dx=0;
+
+   c = wgetch( mainwin );
+
+   if ( c != ERR )
+   {
+      if ( (char)c == 'k' )
+      {
+         dy=-1;
+      } 
+      else if ( (char)c == 'j' )
+      {
+         dy=1;
+      }
+      else if ( (char)c == 'h' )
+      {
+         dx=-1;
+      }
+      else if ( (char)c == 'l' )
+      {
+         dx=1;
+      }
+
+      if ( map[ *Y+dy ][ *X+dx ] == ' ' )
+      {
+         map[ *Y ][ *X ] = ' ';
+         *Y+=dy; *X+=dx;
+         map[ *Y ][ *X ] = '@';
+      }
    }
 
    return;
@@ -77,18 +191,30 @@ void MapPrint( void )
 
 int main( int argc, char *argv[] )
 {
-   int Density = 0;
+   int Y, X;
 
    srand( time( NULL ) );
 
-   MapInit( );
+   Y = getRand( Y_MAP_MAX );
+   X = getRand( X_MAP_MAX );
 
-   while ( Density < ( ( Y_MAX * X_MAX ) / 3 ) )
+   MapInit( Y, X );
+
+   win_startup( );
+
+   win_update( );
+
+   while ( 1 )
    {
-      Density += ObstacleCreate( );
+      get_input( &Y, &X );
+
+      win_map_viewport( Y, X );
+
+      wrefresh( mainwin );
    }
 
-   MapPrint( );
+   win_shutdown( );
 
    return 0;
 }
+
