@@ -19,3 +19,11 @@
 
   o Add escape path (enabled only once # of reward objects captured).
 
+  o Add guard enemies which guard treasure (do not move until within range of player).
+
+  o Add hunter enemies who move around the map.  If they sight the player, they attack.
+
+  o Think about weapons and effects.  Need to indicate a weapon in status, text-effect when
+    used, damage differences (area), weapon types.
+
+
