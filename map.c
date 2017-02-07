@@ -102,6 +102,9 @@ void win_update( int Y, int X )
 {
    wborder( mainwin, 0, 0, 0, 0, 0, 0, 0, 0 );
 
+   mvwhline( mainwin, ( MAP_NLINES - 1 ), 1, '-', ( MAP_NCOLS - 1 ) );
+   mvwvline( mainwin, 1, ( MAP_NCOLS - 1 ), '|', ( MAP_NLINES - 1 ) );
+
    mvwprintw( mainwin, 1, (MAP_NCOLS), "%3d,%3d", Y, X );
 
    wrefresh( mainwin );
