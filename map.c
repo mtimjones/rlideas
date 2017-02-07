@@ -5,8 +5,11 @@
 
 static WINDOW *mainwin;
 
-#define NLINES      23
-#define NCOLS       69
+#define MAP_NLINES      23
+#define MAP_NCOLS       69
+
+#define NLINES      (  7 + MAP_NLINES )
+#define NCOLS       ( 20 + MAP_NCOLS )
 
 #define getSRand()      ( ( float ) rand( ) / ( float ) RAND_MAX )
 #define getRand( x )    ( int ) ( ( x ) * getSRand( ) )
@@ -95,9 +98,11 @@ void win_startup( void )
    return;
 }
 
-void win_update( void )
+void win_update( int Y, int X )
 {
    wborder( mainwin, 0, 0, 0, 0, 0, 0, 0, 0 );
+
+   mvwprintw( mainwin, 1, (MAP_NCOLS), "%3d,%3d", Y, X );
 
    wrefresh( mainwin );
 
@@ -135,12 +140,12 @@ void win_map_viewport( int Y, int X )
    int vp_y;
    int vp_x;
 
-   vp_y = Y - ( ( NLINES - 2 ) / 2 );
+   vp_y = Y - ( ( MAP_NLINES - 2 ) / 2 );
 
-   for ( y = 1 ; y < ( NLINES - 1 ) ; y++ )
+   for ( y = 1 ; y < ( MAP_NLINES - 1 ) ; y++ )
    {
-      vp_x = X - ( ( NCOLS - 2 ) / 2 );
-      for ( x = 1 ; x < ( NCOLS - 1 ) ; x++ )
+      vp_x = X - ( ( MAP_NCOLS - 2 ) / 2 );
+      for ( x = 1 ; x < ( MAP_NCOLS - 1 ) ; x++ )
       {
          mvwprintw( mainwin, y, x, "%c", vp_map( vp_y, vp_x ) );
          vp_x++;
@@ -202,13 +207,15 @@ int main( int argc, char *argv[] )
 
    win_startup( );
 
-   win_update( );
+   win_update( Y, X );
 
    while ( 1 )
    {
       get_input( &Y, &X );
 
       win_map_viewport( Y, X );
+
+      win_update( Y, X );
 
       wrefresh( mainwin );
    }
